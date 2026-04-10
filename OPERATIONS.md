@@ -1,0 +1,56 @@
+# Messa Operativa
+
+## Cosa e gia pronto
+
+- Bot Telegram con output:
+  - Testo pulito
+  - Riassumi
+  - Schema / mappa
+  - Email
+  - WhatsApp
+- Accesso controllato con trial e piani
+- Landing page statica in `landing/`
+
+## Flusso semplice per vendere
+
+1. Metti online la landing page
+2. Metti online il bot
+3. Inserisci nella landing:
+   - username del bot
+   - link Stripe Payment Link
+4. Imposta nel bot:
+   - `BOT_USERNAME`
+   - `SALES_URL`
+   - `ADMIN_TELEGRAM_IDS`
+5. Attivi utenti via Telegram con:
+   - `/granttrial <telegram_id> [giorni]`
+   - `/grantpaid <telegram_id> [giorni]`
+
+## Comandi admin
+
+- `/granttrial 123456789 7`
+- `/grantpaid 123456789 30`
+- `/blockuser 123456789`
+- `/plan`
+
+## Variabili ambiente consigliate
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN="IL_TUO_TOKEN"
+$env:BOT_USERNAME="username_del_bot"
+$env:SALES_URL="https://buy.stripe.com/IL_TUO_LINK"
+$env:ADMIN_TELEGRAM_IDS="TUO_TELEGRAM_ID"
+$env:WHISPER_MODEL="medium"
+$env:WHISPER_LANGUAGE="it"
+$env:WHISPER_PROMPT="Paolo, Irene, Ratanà, Copenaghen"
+$env:OPENAI_API_KEY="LA_TUA_OPENAI_API_KEY"
+$env:OPENAI_MODEL="gpt-4.1"
+```
+
+## Nota pratica
+
+All'inizio puoi anche non integrare Stripe direttamente nel bot:
+- paghi dal link
+- attivi con `/grantpaid`
+
+E il modo piu veloce per partire davvero.
