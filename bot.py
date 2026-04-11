@@ -55,6 +55,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Mandami un vocale o un audio e te lo trascrivo.\n\n"
         "Comandi utili:\n"
         "/start - mostra questo messaggio\n"
+        "/myid - mostra il tuo Telegram ID\n"
         "/ping - verifica che il bot sia vivo\n\n"
         "Dopo la trascrizione puoi anche premere:\n"
         "- Schema / mappa concettuale\n"
@@ -67,6 +68,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("Bot attivo.")
+
+
+async def myid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.message
+    if message is None or update.effective_user is None:
+        return
+
+    ensure_user_record(update.effective_user)
+    username = f"@{update.effective_user.username}" if update.effective_user.username else "nessuno"
+    await message.reply_text(
+        f"Il tuo Telegram ID e: {update.effective_user.id}\nUsername: {username}"
+    )
 
 
 async def plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -113,6 +126,31 @@ async def block_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     record["expires_at"] = None
     save_users(users)
     await message.reply_text(f"Utente {user_id} bloccato.")
+
+
+async def find_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.message
+    if message is None or update.effective_user is None:
+        return
+    if update.effective_user.id not in ADMIN_IDS:
+        await message.reply_text("Comando riservato admin.")
+        return
+    if not context.args:
+        await message.reply_text("Uso: /finduser <username>")
+        return
+
+    query = context.args[0].strip().lower().lstrip("@")
+    users = load_users()
+    for record in users.values():
+      username = str(record.get("username") or "").lower().lstrip("@")
+      if username == query:
+          await message.reply_text(
+              f"Utente trovato\nTelegram ID: {record.get('id')}\nUsername: @{username}\n"
+              f"Piano: {record.get('tier')}\nScadenza: {record.get('expires_at') or 'nessuna'}"
+          )
+          return
+
+    await message.reply_text("Nessun utente trovato con questo username. Deve prima scrivere /start al bot.")
 
 
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -468,7 +506,8 @@ def build_locked_message() -> str:
     return (
         "L'accesso al bot non è attivo.\n\n"
         "Il servizio trasforma i vocali in testo pulito, riassunti, mappe concettuali, email e messaggi WhatsApp pronti.\n\n"
-        "Attiva una prova o un piano da qui:"
+        "Se hai richiesto la prova gratuita, apri il bot e scrivi /start: il tuo account verra registrato e potro attivarti.\n\n"
+        "Per attivare una prova o un piano usa questo link:"
     )
 
 
@@ -481,9 +520,21 @@ def ensure_user_record(user) -> dict[str, str | None]:
             "id": user.id,
             "username": user.username or "",
             "first_name": user.first_name or "",
-            "tier": "trial",
-            "expires_at": iso_after_days(TRIAL_DAYS),
+            "tier": "pending",
+            "expires_at": None,
         }
+        users[key] = record
+        save_users(users)
+        return record
+
+    updated = False
+    if record.get("username") != (user.username or ""):
+        record["username"] = user.username or ""
+        updated = True
+    if record.get("first_name") != (user.first_name or ""):
+        record["first_name"] = user.first_name or ""
+        updated = True
+    if updated:
         users[key] = record
         save_users(users)
     return record
@@ -491,7 +542,7 @@ def ensure_user_record(user) -> dict[str, str | None]:
 
 def has_access(record: dict[str, str | None]) -> bool:
     tier = record.get("tier")
-    if tier == "blocked":
+    if tier in {"blocked", "pending", "inactive"}:
         return False
     expires_at = record.get("expires_at")
     if not expires_at:
@@ -558,11 +609,13 @@ def main() -> None:
 
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("myid", myid))
     app.add_handler(CommandHandler("ping", ping))
     app.add_handler(CommandHandler("plan", plan))
     app.add_handler(CommandHandler("granttrial", grant_trial))
     app.add_handler(CommandHandler("grantpaid", grant_paid))
     app.add_handler(CommandHandler("blockuser", block_user))
+    app.add_handler(CommandHandler("finduser", find_user))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO | filters.Document.ALL, handle_audio))
 

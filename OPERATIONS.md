@@ -22,16 +22,21 @@
    - `BOT_USERNAME`
    - `SALES_URL`
    - `ADMIN_TELEGRAM_IDS`
- 5. Ricevi lo username Telegram via email
- 6. Attivi utenti via Telegram con:
-    - `/granttrial <telegram_id> [giorni]`
-    - `/grantpaid <telegram_id> [giorni]`
+5. Ricevi lo username Telegram via email
+6. Chiedi all'utente di aprire il bot e scrivere `/start`
+7. Recuperi il suo `telegram_id` con:
+   - `/finduser username`
+   - oppure l'utente puo mandarti direttamente `/myid`
+8. Attivi utenti via Telegram con:
+   - `/granttrial <telegram_id> [giorni]`
+   - `/grantpaid <telegram_id> [giorni]`
 
 ## Comandi admin
 
 - `/granttrial 123456789 7`
 - `/grantpaid 123456789 30`
 - `/blockuser 123456789`
+- `/finduser username`
 - `/plan`
 
 ## Variabili ambiente consigliate
