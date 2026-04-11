@@ -17,14 +17,15 @@
 2. Metti online il bot
 3. Inserisci nella landing:
    - username del bot
-   - link Stripe Payment Link
+   - form per richiesta prova gratuita
 4. Imposta nel bot:
    - `BOT_USERNAME`
    - `SALES_URL`
    - `ADMIN_TELEGRAM_IDS`
-5. Attivi utenti via Telegram con:
-   - `/granttrial <telegram_id> [giorni]`
-   - `/grantpaid <telegram_id> [giorni]`
+ 5. Ricevi lo username Telegram via email
+ 6. Attivi utenti via Telegram con:
+    - `/granttrial <telegram_id> [giorni]`
+    - `/grantpaid <telegram_id> [giorni]`
 
 ## Comandi admin
 
@@ -49,11 +50,8 @@ $env:OPENAI_TRANSCRIPTION_MODEL="gpt-4o-mini-transcribe"
 
 ## Nota pratica
 
-All'inizio puoi anche non integrare Stripe direttamente nel bot:
-- paghi dal link
-- attivi con `/grantpaid`
-
-E il modo piu veloce per partire davvero.
+La landing usa `formsubmit.co` per mandarti le richieste prova gratuita via email.
+Al primo test del form dovrai confermare l'indirizzo email cliccando il link che FormSubmit ti inviera.
 
 ## Nota Render
 

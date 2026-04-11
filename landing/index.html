@@ -18,9 +18,9 @@
       <p class="subtitle">Mandi un vocale. Ricevi un testo pulito, un riassunto, una mappa concettuale, una email pronta o un messaggio WhatsApp pronto.</p>
       <div class="actions">
         <a class="button primary" href="https://t.me/davocaleatesto_bot">Provalo su Telegram</a>
-        <a class="button secondary" href="https://paypal.me/PaoloSempio">Attiva il piano</a>
+        <a class="button secondary" href="#prova-gratuita">Richiedi la prova gratuita</a>
       </div>
-      <p class="microcopy">7 giorni gratis. Poi da 2,99€/mese.</p>
+      <p class="microcopy">7 giorni gratis. Ti chiediamo solo lo username Telegram per attivarti.</p>
     </section>
 
     <section class="grid two-cols">
@@ -68,21 +68,40 @@
       </div>
     </section>
 
-    <section class="card pricing">
-      <h2>Prezzo semplice</h2>
-      <div class="price-box">
-        <p class="price">2,99€<span>/mese</span></p>
-        <ul>
-          <li>Testo pulito</li>
-          <li>Riassunti</li>
-          <li>Mappe concettuali</li>
-          <li>Email e WhatsApp pronti</li>
-          <li>Accesso via Telegram</li>
-        </ul>
-      </div>
-      <div class="actions">
-        <a class="button primary" href="https://paypal.me/PaoloSempio">Attiva ora</a>
-      </div>
+    <section class="card pricing" id="prova-gratuita">
+      <h2>Attiva la prova gratuita</h2>
+      <p class="subtitle compact">Lascia almeno il tuo username Telegram. Ti attivo io la prova di 7 giorni e poi, se ti trovi bene, ci sentiamo direttamente.</p>
+
+      <form class="lead-form" action="https://formsubmit.co/paolo.sem2000@gmail.com" method="POST">
+        <input type="hidden" name="_subject" value="Nuova richiesta prova gratuita - Vocale2Testo">
+        <input type="hidden" name="_captcha" value="false">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_next" value="https://davocaleatesto-bot.onrender.com/thanks.html">
+
+        <label>
+          Username Telegram
+          <input type="text" name="telegram_username" placeholder="@tuousername" required>
+        </label>
+
+        <label>
+          Nome
+          <input type="text" name="nome" placeholder="Come ti chiami">
+        </label>
+
+        <label>
+          Email
+          <input type="email" name="email" placeholder="Se vuoi lasciare anche la mail">
+        </label>
+
+        <label>
+          Come pensi di usarlo?
+          <textarea name="note" rows="4" placeholder="Lavoro, clienti, studio, note vocali, ecc."></textarea>
+        </label>
+
+        <button class="button primary submit-button" type="submit">Richiedi la prova gratuita</button>
+      </form>
+
+      <p class="microcopy">Dopo l'invio riceverai una conferma e ti attiverò manualmente il trial sul bot.</p>
     </section>
   </main>
 </body>
