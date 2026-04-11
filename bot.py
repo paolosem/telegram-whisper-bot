@@ -66,6 +66,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await message.reply_text(text)
 
 
+async def start_free_trial(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.message
+    if message is None or update.effective_user is None:
+        return
+
+    record = ensure_user_record(update.effective_user)
+    users = load_users()
+    key = str(update.effective_user.id)
+    record["requested_trial_at"] = datetime.now(timezone.utc).isoformat()
+    users[key] = record
+    save_users(users)
+
+    await message.reply_text(
+        "Grazie, ho registrato la tua richiesta di prova gratuita. A breve ti sarà attivato l'accesso.\n\n"
+        "Se vuoi velocizzare, puoi anche scrivermi il tuo username Telegram insieme alla richiesta dalla landing."
+    )
+
+
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text("Bot attivo.")
 
@@ -506,7 +524,7 @@ def build_locked_message() -> str:
     return (
         "L'accesso al bot non è attivo.\n\n"
         "Il servizio trasforma i vocali in testo pulito, riassunti, mappe concettuali, email e messaggi WhatsApp pronti.\n\n"
-        "Se hai richiesto la prova gratuita, apri il bot e scrivi /start: il tuo account verra registrato e potro attivarti.\n\n"
+        "Se hai richiesto la prova gratuita, scrivi /startfreetrial: registrero la richiesta e potro attivarti.\n\n"
         "Per attivare una prova o un piano usa questo link:"
     )
 
@@ -609,6 +627,8 @@ def main() -> None:
 
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("startfreetrial", start_free_trial))
+    app.add_handler(CommandHandler("startfreetrail", start_free_trial))
     app.add_handler(CommandHandler("myid", myid))
     app.add_handler(CommandHandler("ping", ping))
     app.add_handler(CommandHandler("plan", plan))
