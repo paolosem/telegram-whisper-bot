@@ -51,10 +51,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     payload = context.args[0].strip() if context.args else ""
 
     if payload and payload == FREE_TRIAL_START_CODE:
+        if access.get("trial_used_at"):
+            await message.reply_text(
+                "Hai già usato la prova gratuita. Se vuoi continuare a usare il servizio, contattami direttamente per riattivare l'accesso."
+            )
+            return
+
         users = load_users()
         key = str(update.effective_user.id)
         access["tier"] = "trial"
         access["expires_at"] = iso_after_days(TRIAL_DAYS)
+        access["trial_used_at"] = datetime.now(timezone.utc).isoformat()
         access["requested_trial_at"] = datetime.now(timezone.utc).isoformat()
         users[key] = access
         save_users(users)
