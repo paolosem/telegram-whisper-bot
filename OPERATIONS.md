@@ -40,11 +40,11 @@ $env:TELEGRAM_BOT_TOKEN="IL_TUO_TOKEN"
 $env:BOT_USERNAME="username_del_bot"
 $env:SALES_URL="https://buy.stripe.com/IL_TUO_LINK"
 $env:ADMIN_TELEGRAM_IDS="TUO_TELEGRAM_ID"
-$env:WHISPER_MODEL="medium"
 $env:WHISPER_LANGUAGE="it"
 $env:WHISPER_PROMPT="Paolo, Irene, Ratanà, Copenaghen"
 $env:OPENAI_API_KEY="LA_TUA_OPENAI_API_KEY"
 $env:OPENAI_MODEL="gpt-4.1"
+$env:OPENAI_TRANSCRIPTION_MODEL="gpt-4o-mini-transcribe"
 ```
 
 ## Nota pratica
@@ -54,3 +54,8 @@ All'inizio puoi anche non integrare Stripe direttamente nel bot:
 - attivi con `/grantpaid`
 
 E il modo piu veloce per partire davvero.
+
+## Nota Render
+
+La trascrizione locale con Whisper consumava troppa RAM sul piano Starter.
+Adesso il bot usa OpenAI anche per la trascrizione audio, quindi e molto piu adatto a restare online su Render.

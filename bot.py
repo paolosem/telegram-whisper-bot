@@ -8,7 +8,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from faster_whisper import WhisperModel
 import httpx
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ChatAction
@@ -23,11 +22,11 @@ logger = logging.getLogger(__name__)
 
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
-MODEL_NAME = os.getenv("WHISPER_MODEL", "medium")
 LANGUAGE = os.getenv("WHISPER_LANGUAGE", "it")
 INITIAL_PROMPT = os.getenv("WHISPER_PROMPT", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
+OPENAI_TRANSCRIPTION_MODEL = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
 BOT_USERNAME = os.getenv("BOT_USERNAME", "")
 SALES_URL = os.getenv("SALES_URL", "https://t.me/")
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
@@ -39,16 +38,7 @@ ADMIN_IDS = {
 DATA_DIR = Path(__file__).resolve().parent / "data"
 USERS_FILE = DATA_DIR / "users.json"
 
-_model: WhisperModel | None = None
 transcript_store: dict[str, dict[str, str]] = {}
-
-
-def get_model() -> WhisperModel:
-    global _model
-    if _model is None:
-        logger.info("Loading Whisper model: %s", MODEL_NAME)
-        _model = WhisperModel(MODEL_NAME, device="cpu", compute_type="int8")
-    return _model
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -151,19 +141,7 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         await telegram_file.download_to_drive(custom_path=str(input_path))
 
         try:
-            model = get_model()
-            segments, info = model.transcribe(
-                str(input_path),
-                language=None if LANGUAGE == "auto" else LANGUAGE,
-                initial_prompt=INITIAL_PROMPT or None,
-                vad_filter=True,
-                beam_size=8,
-                best_of=5,
-                condition_on_previous_text=True,
-                temperature=0,
-            )
-            text = " ".join(segment.text.strip() for segment in segments).strip()
-            detected = info.language or "sconosciuta"
+            text, detected = await transcribe_audio(input_path)
         except Exception as exc:
             logger.exception("Transcription failed")
             await waiting.edit_text(f"Errore durante la trascrizione: {exc}")
@@ -341,6 +319,43 @@ async def build_clean_text(text: str, detected_language: str) -> str:
 
     content = data["choices"][0]["message"]["content"].strip()
     return content or text
+
+
+async def transcribe_audio(file_path: Path) -> tuple[str, str]:
+    if not OPENAI_API_KEY:
+        raise RuntimeError("Manca OPENAI_API_KEY: senza questa chiave non posso trascrivere l'audio online.")
+
+    form_data = {
+        "model": OPENAI_TRANSCRIPTION_MODEL,
+    }
+
+    if LANGUAGE != "auto":
+        form_data["language"] = LANGUAGE
+
+    if INITIAL_PROMPT:
+        form_data["prompt"] = INITIAL_PROMPT
+
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+    }
+
+    with file_path.open("rb") as audio_file:
+        files = {
+            "file": (file_path.name, audio_file, "application/octet-stream"),
+        }
+        async with httpx.AsyncClient(timeout=180) as client:
+            response = await client.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers=headers,
+                data=form_data,
+                files=files,
+            )
+            response.raise_for_status()
+            data = response.json()
+
+    text = (data.get("text") or "").strip()
+    detected = data.get("language") or LANGUAGE or "sconosciuta"
+    return text, detected
 
 
 async def build_concept_map(text: str, detected_language: str) -> str:

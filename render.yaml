@@ -14,8 +14,6 @@ services:
         value: davocaleatesto_bot
       - key: SALES_URL
         value: https://paypal.me/PaoloSempio
-      - key: WHISPER_MODEL
-        value: medium
       - key: WHISPER_LANGUAGE
         value: it
       - key: WHISPER_PROMPT
@@ -24,3 +22,5 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4.1
+      - key: OPENAI_TRANSCRIPTION_MODEL
+        value: gpt-4o-mini-transcribe
