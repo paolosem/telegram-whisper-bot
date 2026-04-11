@@ -29,6 +29,7 @@ OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
 OPENAI_TRANSCRIPTION_MODEL = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
 BOT_USERNAME = os.getenv("BOT_USERNAME", "")
 SALES_URL = os.getenv("SALES_URL", "https://t.me/")
+FREE_TRIAL_START_CODE = os.getenv("FREE_TRIAL_START_CODE", "attiva-prova-v2t")
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
 ADMIN_IDS = {
     int(value.strip())
@@ -47,6 +48,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     access = ensure_user_record(update.effective_user)
+    payload = context.args[0].strip() if context.args else ""
+
+    if payload and payload == FREE_TRIAL_START_CODE:
+        users = load_users()
+        key = str(update.effective_user.id)
+        access["tier"] = "trial"
+        access["expires_at"] = iso_after_days(TRIAL_DAYS)
+        access["requested_trial_at"] = datetime.now(timezone.utc).isoformat()
+        users[key] = access
+        save_users(users)
+        await message.reply_text(
+            f"Perfetto: la tua prova gratuita di {TRIAL_DAYS} giorni è attiva da ora.\n\n"
+            "Mandami un vocale o un audio e lo trasformo in testo pulito."
+        )
+        return
+
     if not has_access(access):
         await message.reply_text(build_locked_message(), reply_markup=build_sales_markup())
         return
@@ -516,7 +533,7 @@ def build_sales_markup() -> InlineKeyboardMarkup:
     if SALES_URL:
         buttons.append([InlineKeyboardButton("Attiva l'accesso", url=SALES_URL)])
     if BOT_USERNAME:
-        buttons.append([InlineKeyboardButton("Apri il bot", url=f"https://t.me/{BOT_USERNAME}")])
+        buttons.append([InlineKeyboardButton("Apri il bot", url=f"https://t.me/{BOT_USERNAME}?start={FREE_TRIAL_START_CODE}")])
     return InlineKeyboardMarkup(buttons) if buttons else InlineKeyboardMarkup([])
 
 

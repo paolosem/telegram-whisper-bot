@@ -23,13 +23,10 @@
    - `SALES_URL`
    - `ADMIN_TELEGRAM_IDS`
 5. Ricevi lo username Telegram via email
-6. Chiedi all'utente di aprire il bot e scrivere `/start`
-7. Recuperi il suo `telegram_id` con:
-   - `/finduser username`
-   - oppure l'utente puo mandarti direttamente `/myid`
-8. Attivi utenti via Telegram con:
-   - `/granttrial <telegram_id> [giorni]`
-   - `/grantpaid <telegram_id> [giorni]`
+6. L'utente arriva su `thanks.html` e clicca il bottone di attivazione
+7. Il bot attiva automaticamente il trial di 7 giorni via deep link Telegram
+8. Dopo la scadenza, l'accesso si blocca da solo
+9. Tu intervieni solo dopo, se vuoi convertirlo in pagante
 
 ## Comandi admin
 
@@ -38,6 +35,11 @@
 - `/blockuser 123456789`
 - `/finduser username`
 - `/plan`
+
+## Trial automatico
+
+La pagina `thanks.html` apre il bot con un deep link Telegram usando il codice definito in `FREE_TRIAL_START_CODE`.
+Quando l'utente apre il bot da quel link, il trial di 7 giorni si attiva automaticamente.
 
 ## Variabili ambiente consigliate
 
