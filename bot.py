@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
-import json
+import sqlite3
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 
@@ -34,7 +34,7 @@ ADMIN_IDS = {
     if value.strip()
 }
 DATA_DIR = Path(__file__).resolve().parent / "data"
-USERS_FILE = DATA_DIR / "users.json"
+DATA_DB_PATH = Path(os.getenv("DATA_DB_PATH", str(DATA_DIR / "users.db")))
 
 transcript_store: dict[str, dict[str, str]] = {}
 
@@ -82,8 +82,9 @@ async def plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if message is None or update.effective_user is None:
         return
 
-    ensure_user_record(update.effective_user)
+    record = ensure_user_record(update.effective_user)
     await message.reply_text(
+        f"Piano: {record.get('tier', 'free')}\n\n"
         "Il bot e attualmente gratuito. Mandami un vocale e ti restituisco testo pulito, riassunto, schema, email o messaggio WhatsApp pronto.",
     )
 
@@ -94,6 +95,7 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
 
     ensure_user_record(update.effective_user)
+    increment_user_messages(update.effective_user.id)
 
     audio_obj = message.voice or message.audio or message.document
     if audio_obj is None:
@@ -423,9 +425,7 @@ def build_transcript_message(detected_language: str, text: str) -> str:
 
 
 def ensure_user_record(user) -> dict[str, str | None]:
-    users = load_users()
-    key = str(user.id)
-    record = users.get(key)
+    record = get_user_record(user.id)
     if record is None:
         record = {
             "id": user.id,
@@ -433,9 +433,11 @@ def ensure_user_record(user) -> dict[str, str | None]:
             "first_name": user.first_name or "",
             "tier": "free",
             "expires_at": None,
+            "first_seen_at": now_iso(),
+            "last_seen_at": now_iso(),
+            "messages_count": 0,
         }
-        users[key] = record
-        save_users(users)
+        upsert_user_record(record)
         return record
 
     updated = False
@@ -445,22 +447,101 @@ def ensure_user_record(user) -> dict[str, str | None]:
     if record.get("first_name") != (user.first_name or ""):
         record["first_name"] = user.first_name or ""
         updated = True
+    record["last_seen_at"] = now_iso()
+    updated = True
     if updated:
-        users[key] = record
-        save_users(users)
+        upsert_user_record(record)
     return record
 
 
-def load_users() -> dict[str, dict[str, str | None]]:
+def init_db() -> None:
     DATA_DIR.mkdir(exist_ok=True)
-    if not USERS_FILE.exists():
-        return {}
-    return json.loads(USERS_FILE.read_text(encoding="utf-8"))
+    conn = sqlite3.connect(DATA_DB_PATH)
+    try:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                tier TEXT,
+                expires_at TEXT,
+                first_seen_at TEXT,
+                last_seen_at TEXT,
+                messages_count INTEGER DEFAULT 0
+            )
+            """
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
-def save_users(users: dict[str, dict[str, str | None]]) -> None:
+def get_db_connection() -> sqlite3.Connection:
     DATA_DIR.mkdir(exist_ok=True)
-    USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding="utf-8")
+    conn = sqlite3.connect(DATA_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def get_user_record(user_id: int) -> dict[str, str | int | None] | None:
+    conn = get_db_connection()
+    try:
+        row = conn.execute(
+            "SELECT id, username, first_name, tier, expires_at, first_seen_at, last_seen_at, messages_count FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    return dict(row) if row else None
+
+
+def upsert_user_record(record: dict[str, str | int | None]) -> None:
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            """
+            INSERT INTO users (id, username, first_name, tier, expires_at, first_seen_at, last_seen_at, messages_count)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                username = excluded.username,
+                first_name = excluded.first_name,
+                tier = excluded.tier,
+                expires_at = excluded.expires_at,
+                first_seen_at = excluded.first_seen_at,
+                last_seen_at = excluded.last_seen_at,
+                messages_count = excluded.messages_count
+            """,
+            (
+                record.get("id"),
+                record.get("username"),
+                record.get("first_name"),
+                record.get("tier"),
+                record.get("expires_at"),
+                record.get("first_seen_at"),
+                record.get("last_seen_at"),
+                record.get("messages_count", 0),
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def increment_user_messages(user_id: int) -> None:
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            "UPDATE users SET messages_count = COALESCE(messages_count, 0) + 1, last_seen_at = ? WHERE id = ?",
+            (now_iso(), user_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _guess_suffix(audio_obj, message: Update.message) -> str:
@@ -476,6 +557,8 @@ def _guess_suffix(audio_obj, message: Update.message) -> str:
 def main() -> None:
     if not BOT_TOKEN:
         raise RuntimeError("Manca TELEGRAM_BOT_TOKEN nelle variabili d'ambiente.")
+
+    init_db()
 
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))

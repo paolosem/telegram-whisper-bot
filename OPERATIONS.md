@@ -9,6 +9,7 @@
   - Email
   - WhatsApp
 - Bot gratuito e aperto
+- Salvataggio utenti in SQLite
 - Landing page statica in `landing/`
 
 ## Flusso semplice
@@ -29,6 +30,7 @@
 ```powershell
 $env:TELEGRAM_BOT_TOKEN="IL_TUO_TOKEN"
 $env:BOT_USERNAME="username_del_bot"
+$env:DATA_DB_PATH="C:\percorso\users.db"
 $env:WHISPER_LANGUAGE="it"
 $env:WHISPER_PROMPT="Paolo, Irene, Ratanà, Copenaghen"
 $env:OPENAI_API_KEY="LA_TUA_OPENAI_API_KEY"
@@ -40,3 +42,16 @@ $env:OPENAI_TRANSCRIPTION_MODEL="gpt-4o-mini-transcribe"
 
 La trascrizione locale con Whisper consumava troppa RAM sul piano Starter.
 Adesso il bot usa OpenAI anche per la trascrizione audio, quindi e molto piu adatto a restare online su Render.
+
+## Nota utenti
+
+Il bot salva gli utenti in SQLite con:
+
+- telegram_id
+- username
+- first_name
+- first_seen_at
+- last_seen_at
+- messages_count
+
+Su Render, se vuoi tenere questi dati nel tempo, conviene montare un persistent disk e puntare `DATA_DB_PATH` a quel percorso.
