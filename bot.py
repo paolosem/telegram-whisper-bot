@@ -28,9 +28,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
 OPENAI_TRANSCRIPTION_MODEL = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
 BOT_USERNAME = os.getenv("BOT_USERNAME", "")
-SALES_URL = os.getenv("SALES_URL", "https://t.me/")
-FREE_TRIAL_START_CODE = os.getenv("FREE_TRIAL_START_CODE", "attiva-prova-v2t")
-TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
 ADMIN_IDS = {
     int(value.strip())
     for value in os.getenv("ADMIN_TELEGRAM_IDS", "").split(",")
@@ -47,36 +44,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if message is None or update.effective_user is None:
         return
 
-    access = ensure_user_record(update.effective_user)
-    payload = context.args[0].strip() if context.args else ""
-
-    if payload and payload == FREE_TRIAL_START_CODE:
-        if access.get("trial_used_at"):
-            await message.reply_text(
-                "Hai già usato la prova gratuita. Se vuoi continuare a usare il servizio, contattami direttamente per riattivare l'accesso."
-            )
-            return
-
-        users = load_users()
-        key = str(update.effective_user.id)
-        access["tier"] = "trial"
-        access["expires_at"] = iso_after_days(TRIAL_DAYS)
-        access["trial_used_at"] = datetime.now(timezone.utc).isoformat()
-        access["requested_trial_at"] = datetime.now(timezone.utc).isoformat()
-        users[key] = access
-        save_users(users)
-        await message.reply_text(
-            f"Perfetto: la tua prova gratuita di {TRIAL_DAYS} giorni è attiva da ora.\n\n"
-            "Mandami un vocale o un audio e lo trasformo in testo pulito."
-        )
-        return
-
-    if not has_access(access):
-        await message.reply_text(build_locked_message(), reply_markup=build_sales_markup())
-        return
+    ensure_user_record(update.effective_user)
 
     text = (
-        "Mandami un vocale o un audio e te lo trascrivo.\n\n"
+        "Mandami un vocale o un audio e lo trasformo in testo utile.\n\n"
         "Comandi utili:\n"
         "/start - mostra questo messaggio\n"
         "/myid - mostra il tuo Telegram ID\n"
@@ -88,24 +59,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "- WhatsApp"
     )
     await message.reply_text(text)
-
-
-async def start_free_trial(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    message = update.message
-    if message is None or update.effective_user is None:
-        return
-
-    record = ensure_user_record(update.effective_user)
-    users = load_users()
-    key = str(update.effective_user.id)
-    record["requested_trial_at"] = datetime.now(timezone.utc).isoformat()
-    users[key] = record
-    save_users(users)
-
-    await message.reply_text(
-        "Grazie, ho registrato la tua richiesta di prova gratuita. A breve ti sarà attivato l'accesso.\n\n"
-        "Se vuoi velocizzare, puoi anche scrivermi il tuo username Telegram insieme alla richiesta dalla landing."
-    )
 
 
 async def ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -129,70 +82,10 @@ async def plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if message is None or update.effective_user is None:
         return
 
-    access = ensure_user_record(update.effective_user)
-    expires_at = access.get("expires_at") or "nessuna scadenza"
-    tier = access.get("tier", "inactive")
+    ensure_user_record(update.effective_user)
     await message.reply_text(
-        f"Piano: {tier}\nScadenza: {expires_at}\n\nSe vuoi rinnovare o attivare l'accesso: {SALES_URL}",
-        reply_markup=build_sales_markup(),
+        "Il bot e attualmente gratuito. Mandami un vocale e ti restituisco testo pulito, riassunto, schema, email o messaggio WhatsApp pronto.",
     )
-
-
-async def grant_trial(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await grant_access(update, context, tier="trial")
-
-
-async def grant_paid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await grant_access(update, context, tier="paid")
-
-
-async def block_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    message = update.message
-    if message is None or update.effective_user is None:
-        return
-    if update.effective_user.id not in ADMIN_IDS:
-        await message.reply_text("Comando riservato admin.")
-        return
-    if not context.args:
-        await message.reply_text("Uso: /blockuser <telegram_id>")
-        return
-
-    user_id = context.args[0].strip()
-    users = load_users()
-    record = users.get(user_id)
-    if record is None:
-        await message.reply_text("Utente non trovato.")
-        return
-
-    record["tier"] = "blocked"
-    record["expires_at"] = None
-    save_users(users)
-    await message.reply_text(f"Utente {user_id} bloccato.")
-
-
-async def find_user(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    message = update.message
-    if message is None or update.effective_user is None:
-        return
-    if update.effective_user.id not in ADMIN_IDS:
-        await message.reply_text("Comando riservato admin.")
-        return
-    if not context.args:
-        await message.reply_text("Uso: /finduser <username>")
-        return
-
-    query = context.args[0].strip().lower().lstrip("@")
-    users = load_users()
-    for record in users.values():
-      username = str(record.get("username") or "").lower().lstrip("@")
-      if username == query:
-          await message.reply_text(
-              f"Utente trovato\nTelegram ID: {record.get('id')}\nUsername: @{username}\n"
-              f"Piano: {record.get('tier')}\nScadenza: {record.get('expires_at') or 'nessuna'}"
-          )
-          return
-
-    await message.reply_text("Nessun utente trovato con questo username. Deve prima scrivere /start al bot.")
 
 
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -200,10 +93,7 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if message is None or update.effective_user is None:
         return
 
-    access = ensure_user_record(update.effective_user)
-    if not has_access(access):
-        await message.reply_text(build_locked_message(), reply_markup=build_sales_markup())
-        return
+    ensure_user_record(update.effective_user)
 
     audio_obj = message.voice or message.audio or message.document
     if audio_obj is None:
@@ -260,10 +150,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if query is None or query.data is None or update.effective_user is None:
         return
 
-    access = ensure_user_record(update.effective_user)
-    if not has_access(access):
-        await query.answer("Accesso non attivo.", show_alert=True)
-        return
+    ensure_user_record(update.effective_user)
 
     await query.answer()
 
@@ -535,24 +422,6 @@ def build_transcript_message(detected_language: str, text: str) -> str:
     return f"Lingua rilevata: {detected_language}\n\nTesto pulito:\n{text}"
 
 
-def build_sales_markup() -> InlineKeyboardMarkup:
-    buttons = []
-    if SALES_URL:
-        buttons.append([InlineKeyboardButton("Attiva l'accesso", url=SALES_URL)])
-    if BOT_USERNAME:
-        buttons.append([InlineKeyboardButton("Apri il bot", url=f"https://t.me/{BOT_USERNAME}?start={FREE_TRIAL_START_CODE}")])
-    return InlineKeyboardMarkup(buttons) if buttons else InlineKeyboardMarkup([])
-
-
-def build_locked_message() -> str:
-    return (
-        "L'accesso al bot non è attivo.\n\n"
-        "Il servizio trasforma i vocali in testo pulito, riassunti, mappe concettuali, email e messaggi WhatsApp pronti.\n\n"
-        "Se hai richiesto la prova gratuita, scrivi /startfreetrial: registrero la richiesta e potro attivarti.\n\n"
-        "Per attivare una prova o un piano usa questo link:"
-    )
-
-
 def ensure_user_record(user) -> dict[str, str | None]:
     users = load_users()
     key = str(user.id)
@@ -562,7 +431,7 @@ def ensure_user_record(user) -> dict[str, str | None]:
             "id": user.id,
             "username": user.username or "",
             "first_name": user.first_name or "",
-            "tier": "pending",
+            "tier": "free",
             "expires_at": None,
         }
         users[key] = record
@@ -582,24 +451,6 @@ def ensure_user_record(user) -> dict[str, str | None]:
     return record
 
 
-def has_access(record: dict[str, str | None]) -> bool:
-    tier = record.get("tier")
-    if tier in {"blocked", "pending", "inactive"}:
-        return False
-    expires_at = record.get("expires_at")
-    if not expires_at:
-        return tier in {"trial", "paid", "admin"}
-    try:
-        expiry = datetime.fromisoformat(expires_at)
-    except ValueError:
-        return False
-    return expiry >= datetime.now(timezone.utc)
-
-
-def iso_after_days(days: int) -> str:
-    return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
-
-
 def load_users() -> dict[str, dict[str, str | None]]:
     DATA_DIR.mkdir(exist_ok=True)
     if not USERS_FILE.exists():
@@ -610,29 +461,6 @@ def load_users() -> dict[str, dict[str, str | None]]:
 def save_users(users: dict[str, dict[str, str | None]]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
     USERS_FILE.write_text(json.dumps(users, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-async def grant_access(update: Update, context: ContextTypes.DEFAULT_TYPE, tier: str) -> None:
-    message = update.message
-    if message is None or update.effective_user is None:
-        return
-    if update.effective_user.id not in ADMIN_IDS:
-        await message.reply_text("Comando riservato admin.")
-        return
-    if len(context.args) < 1:
-        await message.reply_text(f"Uso: /{'granttrial' if tier == 'trial' else 'grantpaid'} <telegram_id> [giorni]")
-        return
-
-    user_id = context.args[0].strip()
-    days = int(context.args[1]) if len(context.args) > 1 else (TRIAL_DAYS if tier == "trial" else 30)
-
-    users = load_users()
-    record = users.get(user_id, {"id": int(user_id), "username": "", "first_name": ""})
-    record["tier"] = tier
-    record["expires_at"] = iso_after_days(days)
-    users[user_id] = record
-    save_users(users)
-    await message.reply_text(f"Utente {user_id} impostato come {tier} per {days} giorni.")
 
 
 def _guess_suffix(audio_obj, message: Update.message) -> str:
@@ -651,15 +479,9 @@ def main() -> None:
 
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("startfreetrial", start_free_trial))
-    app.add_handler(CommandHandler("startfreetrail", start_free_trial))
     app.add_handler(CommandHandler("myid", myid))
     app.add_handler(CommandHandler("ping", ping))
     app.add_handler(CommandHandler("plan", plan))
-    app.add_handler(CommandHandler("granttrial", grant_trial))
-    app.add_handler(CommandHandler("grantpaid", grant_paid))
-    app.add_handler(CommandHandler("blockuser", block_user))
-    app.add_handler(CommandHandler("finduser", find_user))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO | filters.Document.ALL, handle_audio))
 

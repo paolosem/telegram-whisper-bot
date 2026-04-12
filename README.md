@@ -1,6 +1,6 @@
 # Telegram Whisper Bot
 
-Bot Telegram minimale per trascrivere vocali e audio.
+Bot Telegram gratuito per trasformare vocali e audio in testo utile.
 
 ## Setup
 
@@ -31,16 +31,15 @@ python bot.py
 
 ## Uso
 
+- apri il bot su Telegram
 - manda un vocale al bot
 - il bot risponde direttamente con un `Testo pulito`
 - se il testo è troppo lungo, ti invia un `.txt`
-- se imposti `OPENAI_API_KEY`, il `Testo pulito` viene ricostruito in modo piu sensato a partire dalla trascrizione base
-- sotto la risposta trovi due bottoni:
-  - `Schema / mappa`: genera una mappa concettuale testuale del contenuto
-  - `Riassumi`: genera un riassunto breve del vocale
-- trovi anche:
-  - `Email`: riscrive il contenuto in stile email pronta da copiare
-  - `WhatsApp`: riscrive il contenuto in stile messaggio WhatsApp pronto da copiare
+- sotto la risposta trovi:
+  - `Schema / mappa`
+  - `Riassumi`
+  - `Email`
+  - `WhatsApp`
 
 ## Note
 
@@ -51,3 +50,4 @@ python bot.py
 - `OPENAI_API_KEY` abilita la ricostruzione del `Testo pulito`
 - OpenAI trascrive l'audio e GPT lo trasforma in testo leggibile e contestualmente piu corretto
 - il bot conserva in memoria le ultime trascrizioni per poter usare i bottoni senza reinviare il vocale
+- il bot e pensato per essere condiviso liberamente con chi ne ha bisogno
