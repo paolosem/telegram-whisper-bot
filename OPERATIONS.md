@@ -24,6 +24,7 @@
 - `/start`
 - `/myid`
 - `/plan`
+- `/exportusers` (solo admin)
 
 ## Variabili ambiente consigliate
 
@@ -53,5 +54,7 @@ Il bot salva gli utenti in SQLite con:
 - first_seen_at
 - last_seen_at
 - messages_count
+
+Puoi esportare gli utenti con `/exportusers` e ricevere un file CSV direttamente su Telegram.
 
 Su Render, se vuoi tenere questi dati nel tempo, conviene montare un persistent disk e puntare `DATA_DB_PATH` a quel percorso.

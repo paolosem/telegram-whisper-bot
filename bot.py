@@ -4,6 +4,7 @@ import logging
 import os
 import sqlite3
 import tempfile
+import csv
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -87,6 +88,32 @@ async def plan(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         f"Piano: {record.get('tier', 'free')}\n\n"
         "Il bot e attualmente gratuito. Mandami un vocale e ti restituisco testo pulito, riassunto, schema, email o messaggio WhatsApp pronto.",
     )
+
+
+async def export_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.message
+    if message is None or update.effective_user is None:
+        return
+    if update.effective_user.id not in ADMIN_IDS:
+        await message.reply_text("Comando riservato admin.")
+        return
+
+    rows = list_all_users()
+    if not rows:
+        await message.reply_text("Nessun utente registrato.")
+        return
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        output_path = Path(temp_dir) / "users-export.csv"
+        with output_path.open("w", newline="", encoding="utf-8") as csv_file:
+            writer = csv.DictWriter(
+                csv_file,
+                fieldnames=["id", "username", "first_name", "tier", "expires_at", "first_seen_at", "last_seen_at", "messages_count"],
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+        await message.reply_document(document=output_path.open("rb"), filename="users-export.csv")
 
 
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -540,6 +567,17 @@ def increment_user_messages(user_id: int) -> None:
         conn.close()
 
 
+def list_all_users() -> list[dict[str, str | int | None]]:
+    conn = get_db_connection()
+    try:
+        rows = conn.execute(
+            "SELECT id, username, first_name, tier, expires_at, first_seen_at, last_seen_at, messages_count FROM users ORDER BY first_seen_at DESC"
+        ).fetchall()
+    finally:
+        conn.close()
+    return [dict(row) for row in rows]
+
+
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -565,6 +603,7 @@ def main() -> None:
     app.add_handler(CommandHandler("myid", myid))
     app.add_handler(CommandHandler("ping", ping))
     app.add_handler(CommandHandler("plan", plan))
+    app.add_handler(CommandHandler("exportusers", export_users))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO | filters.Document.ALL, handle_audio))
 
