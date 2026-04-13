@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 LANGUAGE = os.getenv("WHISPER_LANGUAGE", "it")
-INITIAL_PROMPT = os.getenv("WHISPER_PROMPT", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1")
 OPENAI_TRANSCRIPTION_MODEL = os.getenv("OPENAI_TRANSCRIPTION_MODEL", "gpt-4o-mini-transcribe")
@@ -290,7 +289,6 @@ async def build_clean_text(text: str, detected_language: str) -> str:
 
     user_prompt = (
         f"Lingua rilevata: {detected_language}\n"
-        f"Prompt di contesto: {INITIAL_PROMPT or 'nessuno'}\n\n"
         "Trascrizione da ripulire:\n"
         f"{text}"
     )
@@ -327,9 +325,6 @@ async def transcribe_audio(file_path: Path) -> tuple[str, str]:
 
     if LANGUAGE != "auto":
         form_data["language"] = LANGUAGE
-
-    if INITIAL_PROMPT:
-        form_data["prompt"] = INITIAL_PROMPT
 
     headers = {
         "Authorization": f"Bearer {OPENAI_API_KEY}",
@@ -394,7 +389,6 @@ async def rewrite_as_whatsapp(text: str, detected_language: str) -> str:
 async def call_openai_text(system_prompt: str, text: str, detected_language: str) -> str:
     user_prompt = (
         f"Lingua rilevata: {detected_language}\n"
-        f"Prompt di contesto: {INITIAL_PROMPT or 'nessuno'}\n\n"
         f"Testo da elaborare:\n{text}"
     )
 
